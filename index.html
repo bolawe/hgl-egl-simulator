@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive HGL/EGL Simulator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .control-panel {
+            background: #ecf0f1;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .slider-container {
+            margin: 10px 0;
+        }
+        label {
+            display: inline-block;
+            width: 200px;
+            font-weight: bold;
+        }
+        input[type="range"] {
+            width: 300px;
+            vertical-align: middle;
+        }
+        .value-display {
+            display: inline-block;
+            width: 50px;
+            text-align: right;
+        }
+        #simulator {
+            width: 100%;
+            height: 400px;
+            border: 1px solid #ddd;
+            margin: 20px 0;
+            position: relative;
+            overflow: hidden;
+        }
+        #pipeSVG {
+            width: 100%;
+            height: 100%;
+        }
+        .results {
+            background: #e8f4f8;
+            padding: 15px;
+            border-radius: 5px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th, td {
+            padding: 8px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background: #2c3e50;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Interactive HGL/EGL Simulator</h1>
+        
+        <div class="control-panel">
+            <h2>Controls</h2>
+            <div class="slider-container">
+                <label for="flowRate">Flow Rate (m³/s):</label>
+                <input type="range" id="flowRate" min="0" max="5" step="0.1" value="1.5">
+                <span class="value-display" id="flowRateValue">1.5</span>
+            </div>
+            
+            <div class="slider-container">
+                <label for="pipeDiameter">Pipe Diameter (m):</label>
+                <input type="range" id="pipeDiameter" min="0.1" max="1.5" step="0.05" value="0.5">
+                <span class="value-display" id="pipeDiameterValue">0.5</span>
+            </div>
+            
+            <div class="slider-container">
+                <label for="pumpHead">Pump Head (m):</label>
+                <input type="range" id="pumpHead" min="0" max="100" step="1" value="30">
+                <span class="value-display" id="pumpHeadValue">30</span>
+            </div>
+            
+            <div class="slider-container">
+                <label for="pipeLength">Pipe Length (m):</label>
+                <input type="range" id="pipeLength" min="10" max="500" step="10" value="100">
+                <span class="value-display" id="pipeLengthValue">100</span>
+            </div>
+            
+            <div class="slider-container">
+                <label for="roughness">Pipe Roughness (mm):</label>
+                <input type="range" id="roughness" min="0.01" max="5" step="0.01" value="0.15">
+                <span class="value-display" id="roughnessValue">0.15</span>
+            </div>
+        </div>
+        
+        <div id="simulator">
+            <svg id="pipeSVG" viewBox="0 0 800 300">
+                <!-- Elevation Profile (Green) -->
+                <path id="elevation" stroke="#27ae60" stroke-width="3" fill="none" />
+                
+                <!-- Pipe (Black) -->
+                <path id="pipe" stroke="#2c3e50" stroke-width="10" fill="none" />
+                
+                <!-- HGL (Blue Dashed) -->
+                <path id="hgl" stroke="#3498db" stroke-width="2" fill="none" stroke-dasharray="5,5" />
+                
+                <!-- EGL (Red) -->
+                <path id="egl" stroke="#e74c3c" stroke-width="2" fill="none" />
+                
+                <!-- Labels -->
+                <text x="10" y="20" fill="#27ae60">Elevation</text>
+                <text x="10" y="40" fill="#3498db">HGL</text>
+                <text x="10" y="60" fill="#e74c3c">EGL</text>
+            </svg>
+        </div>
+        
+        <div class="results">
+            <h2>Results</h2>
+            <table>
+                <tr>
+                    <th>Parameter</th>
+                    <th>Value</th>
+                </tr>
+                <tr>
+                    <td>Velocity (m/s)</td>
+                    <td id="velocityValue">0</td>
+                </tr>
+                <tr>
+                    <td>Velocity Head (m)</td>
+                    <td id="velocityHead">0</td>
+                </tr>
+                <tr>
+                    <td>Friction Loss (m)</td>
+                    <td id="frictionLoss">0</td>
+                </tr>
+                <tr>
+                    <td>Pressure at End (m)</td>
+                    <td id="pressureEnd">0</td>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Get all sliders
+            const sliders = document.querySelectorAll('input[type="range"]');
+            
+            // Update displayed values when sliders change
+            sliders.forEach(slider => {
+                const valueSpan = document.getElementById(slider.id + 'Value');
+                slider.addEventListener('input', function() {
+                    valueSpan.textContent = this.value;
+                    updateSimulation();
+                });
+            });
+            
+            // Initial simulation update
+            updateSimulation();
+            
+            function updateSimulation() {
+                // Get current values
+                const flowRate = parseFloat(document.getElementById('flowRate').value);
+                const diameter = parseFloat(document.getElementById('pipeDiameter').value);
+                const pumpHead = parseFloat(document.getElementById('pumpHead').value);
+                const pipeLength = parseFloat(document.getElementById('pipeLength').value);
+                const roughness = parseFloat(document.getElementById('roughness').value);
+                
+                // Calculate pipe parameters
+                const area = Math.PI * Math.pow(diameter/2, 2);
+                const velocity = flowRate / area;
+                const velocityHead = Math.pow(velocity, 2) / (2 * 9.81);
+                
+                // Darcy-Weisbach friction loss (simplified)
+                const reynolds = (velocity * diameter) / 1e-6; // Kinematic viscosity ~1e-6 m²/s for water
+                let frictionFactor;
+                
+                if (reynolds < 2000) {
+                    frictionFactor = 64 / reynolds; // Laminar flow
+                } else {
+                    // Colebrook-White approximation (turbulent)
+                    const relativeRoughness = roughness / (diameter * 1000);
+                    frictionFactor = 0.25 / Math.pow(Math.log10((relativeRoughness/3.7) + (5.74/Math.pow(reynolds,0.9))), 2);
+                }
+                
+                const frictionLoss = frictionFactor * (pipeLength/diameter) * velocityHead;
+                
+                // Update results display
+                document.getElementById('velocityValue').textContent = velocity.toFixed(3);
+                document.getElementById('velocityHead').textContent = velocityHead.toFixed(3);
+                document.getElementById('frictionLoss').textContent = frictionLoss.toFixed(3);
+                
+                // Pressure at pipe end (simplified)
+                const pressureEnd = pumpHead - velocityHead - frictionLoss;
+                document.getElementById('pressureEnd').textContent = pressureEnd.toFixed(3);
+                
+                // Update SVG visualization
+                updateSVG(pipeLength, pumpHead, velocityHead, frictionLoss);
+            }
+            
+            function updateSVG(pipeLength, pumpHead, velocityHead, frictionLoss) {
+                const svg = document.getElementById('pipeSVG');
+                const width = 800;
+                const height = 300;
+                const margin = 50;
+                
+                // Create a simple elevation profile (sinusoidal for demo)
+                const elevationPoints = [];
+                const hglPoints = [];
+                const eglPoints = [];
+                
+                for (let x = 0; x <= width; x += 10) {
+                    const xRatio = x / width;
+                    
+                    // Elevation profile (sin wave for demo)
+                    const elevation = 50 + 30 * Math.sin(xRatio * Math.PI * 2);
+                    elevationPoints.push(`${x},${height - margin - elevation}`);
+                    
+                    // HGL (starts at pump head, loses energy due to friction)
+                    const hgl = pumpHead - (frictionLoss * xRatio);
+                    hglPoints.push(`${x},${height - margin - hgl}`);
+                    
+                    // EGL (HGL + velocity head)
+                    const egl = hgl + velocityHead;
+                    eglPoints.push(`${x},${height - margin - egl}`);
+                }
+                
+                // Update SVG paths
+                document.getElementById('elevation').setAttribute('d', `M${elevationPoints.join(' L')}`);
+                document.getElementById('pipe').setAttribute('d', `M${elevationPoints.join(' L')}`);
+                document.getElementById('hgl').setAttribute('d', `M${hglPoints.join(' L')}`);
+                document.getElementById('egl').setAttribute('d', `M${eglPoints.join(' L')}`);
+            }
+        });
+    </script>
+</body>
+</html>
