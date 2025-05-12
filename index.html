@@ -1,260 +1,1007 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Interactive HGL/EGL Simulator</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 20px;
-            background: #f5f5f5;
-        }
-        h1 {
-            color: #2c3e50;
-            text-align: center;
-        }
-        .container {
-            max-width: 900px;
-            margin: 0 auto;
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        .control-panel {
-            background: #ecf0f1;
-            padding: 15px;
-            border-radius: 5px;
-            margin-bottom: 20px;
-        }
-        .slider-container {
-            margin: 10px 0;
-        }
-        label {
-            display: inline-block;
-            width: 200px;
-            font-weight: bold;
-        }
-        input[type="range"] {
-            width: 300px;
-            vertical-align: middle;
-        }
-        .value-display {
-            display: inline-block;
-            width: 50px;
-            text-align: right;
-        }
-        #simulator {
-            width: 100%;
-            height: 400px;
-            border: 1px solid #ddd;
-            margin: 20px 0;
-            position: relative;
-            overflow: hidden;
-        }
-        #pipeSVG {
-            width: 100%;
-            height: 100%;
-        }
-        .results {
-            background: #e8f4f8;
-            padding: 15px;
-            border-radius: 5px;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 10px;
-        }
-        th, td {
-            padding: 8px;
-            text-align: left;
-            border-bottom: 1px solid #ddd;
-        }
-        th {
-            background: #2c3e50;
-            color: white;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pipeline System Longitudinal View with Component Toggles</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.2/p5.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      background-color: #f0f0f0;
+    }
+    .container {
+      max-width: 900px;
+      margin: auto;
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    canvas {
+      border: 1px solid #ccc;
+      margin: 10px 0;
+    }
+    .controls {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .reset-button-container {
+      text-align: center;
+      margin: 10px 0;
+    }
+    .calculation-steps {
+      margin-top: 20px;
+      padding: 15px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      background-color: #f9f9f9;
+    }
+    .calculation-steps h3 {
+      margin-top: 0;
+    }
+    .calculation-steps ul {
+      list-style-type: none;
+      padding-left: 0;
+    }
+    .calculation-steps li {
+      margin-bottom: 15px;
+    }
+    .calculation-steps strong {
+      color: #333;
+    }
+    .calculation-steps .equation {
+      font-style: italic;
+      color: #555;
+    }
+    label {
+      font-size: 14px;
+      margin-right: 10px;
+    }
+    select, input[type="range"], input[type="checkbox"], button {
+      width: 100%;
+      padding: 5px;
+    }
+    button {
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      padding: 10px;
+      width: 200px;
+    }
+    button:hover {
+      background-color: #45a049;
+    }
+    .info {
+      font-size: 12px;
+      color: #555;
+      margin-top: 10px;
+    }
+    .section {
+      margin-bottom: 15px;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Interactive HGL/EGL Simulator</h1>
-        
-        <div class="control-panel">
-            <h2>Controls</h2>
-            <div class="slider-container">
-                <label for="flowRate">Flow Rate (m³/s):</label>
-                <input type="range" id="flowRate" min="0" max="5" step="0.1" value="1.5">
-                <span class="value-display" id="flowRateValue">1.5</span>
-            </div>
-            
-            <div class="slider-container">
-                <label for="pipeDiameter">Pipe Diameter (m):</label>
-                <input type="range" id="pipeDiameter" min="0.1" max="1.5" step="0.05" value="0.5">
-                <span class="value-display" id="pipeDiameterValue">0.5</span>
-            </div>
-            
-            <div class="slider-container">
-                <label for="pumpHead">Pump Head (m):</label>
-                <input type="range" id="pumpHead" min="0" max="100" step="1" value="30">
-                <span class="value-display" id="pumpHeadValue">30</span>
-            </div>
-            
-            <div class="slider-container">
-                <label for="pipeLength">Pipe Length (m):</label>
-                <input type="range" id="pipeLength" min="10" max="500" step="10" value="100">
-                <span class="value-display" id="pipeLengthValue">100</span>
-            </div>
-            
-            <div class="slider-container">
-                <label for="roughness">Pipe Roughness (mm):</label>
-                <input type="range" id="roughness" min="0.01" max="5" step="0.01" value="0.15">
-                <span class="value-display" id="roughnessValue">0.15</span>
-            </div>
-        </div>
-        
-        <div id="simulator">
-            <svg id="pipeSVG" viewBox="0 0 800 300">
-                <!-- Elevation Profile (Green) -->
-                <path id="elevation" stroke="#27ae60" stroke-width="3" fill="none" />
-                
-                <!-- Pipe (Black) -->
-                <path id="pipe" stroke="#2c3e50" stroke-width="10" fill="none" />
-                
-                <!-- HGL (Blue Dashed) -->
-                <path id="hgl" stroke="#3498db" stroke-width="2" fill="none" stroke-dasharray="5,5" />
-                
-                <!-- EGL (Red) -->
-                <path id="egl" stroke="#e74c3c" stroke-width="2" fill="none" />
-                
-                <!-- Labels -->
-                <text x="10" y="20" fill="#27ae60">Elevation</text>
-                <text x="10" y="40" fill="#3498db">HGL</text>
-                <text x="10" y="60" fill="#e74c3c">EGL</text>
-            </svg>
-        </div>
-        
-        <div class="results">
-            <h2>Results</h2>
-            <table>
-                <tr>
-                    <th>Parameter</th>
-                    <th>Value</th>
-                </tr>
-                <tr>
-                    <td>Velocity (m/s)</td>
-                    <td id="velocityValue">0</td>
-                </tr>
-                <tr>
-                    <td>Velocity Head (m)</td>
-                    <td id="velocityHead">0</td>
-                </tr>
-                <tr>
-                    <td>Friction Loss (m)</td>
-                    <td id="frictionLoss">0</td>
-                </tr>
-                <tr>
-                    <td>Pressure at End (m)</td>
-                    <td id="pressureEnd">0</td>
-                </tr>
-            </table>
-        </div>
+  <div class="container">
+    <h2>Pipeline System Longitudinal View with Component Toggles</h2>
+    <div class="controls">
+      <!-- Reservoir -->
+      <div class="section">
+        <h4>Reservoir</h4>
+        <label><input type="checkbox" id="enableReservoir" checked> Enable</label>
+        <label for="reservoirElevation">Water Level (m): <span id="reservoirElevationValue">20</span></label>
+        <input type="range" id="reservoirElevation" min="10" max="50" value="20" step="1">
+      </div>
+      <!-- Flow Rate -->
+      <div class="section">
+        <h4>System</h4>
+        <label for="flowRate">Flow Rate (L/s): <span id="flowRateValue">50</span></label>
+        <input type="range" id="flowRate" min="10" max="200" value="50" step="5">
+      </div>
+      <!-- Pipe 1 -->
+      <div class="section">
+        <h4>Pipe 1</h4>
+        <label><input type="checkbox" id="enablePipe1" checked> Enable</label>
+        <label for="pipe1Length">Length (m): <span id="pipe1LengthValue">100</span></label>
+        <input type="range" id="pipe1Length" min="50" max="500" value="100" step="10">
+        <label for="pipe1Diameter">Diameter (mm): <span id="pipe1DiameterValue">200</span></label>
+        <input type="range" id="pipe1Diameter" min="50" max="500" value="200" step="10">
+        <label for="pipe1Material">Material:</label>
+        <select id="pipe1Material">
+          <option value="0.0001">PVC (n=0.0001)</option>
+          <option value="0.0004">Steel (n=0.0004)</option>
+          <option value="0.0015">Concrete (n=0.0015)</option>
+        </select>
+      </div>
+      <!-- Valve -->
+      <div class="section">
+        <h4>Valve</h4>
+        <label><input type="checkbox" id="enableValve" checked> Enable</label>
+        <label for="valveType">Valve Type:</label>
+        <select id="valveType">
+          <option value="0.2">Gate Valve (K=0.2)</option>
+          <option value="0.1">Ball Valve (K=0.1)</option>
+          <option value="1.0">Globe Valve (K=1.0)</option>
+        </select>
+      </div>
+      <!-- Pipe 2 -->
+      <div class="section">
+        <h4>Pipe 2</h4>
+        <label><input type="checkbox" id="enablePipe2" checked> Enable</label>
+        <label for="pipe2Length">Length (m): <span id="pipe2LengthValue">150</span></label>
+        <input type="range" id="pipe2Length" min="50" max="500" value="150" step="10">
+        <label for="pipe2Diameter">Diameter (mm): <span id="pipe2DiameterValue">250</span></label>
+        <input type="range" id="pipe2Diameter" min="50" max="500" value="250" step="10">
+        <label for="pipe2Material">Material:</label>
+        <select id="pipe2Material">
+          <option value="0.0001">PVC (n=0.0001)</option>
+          <option value="0.0004">Steel (n=0.0004)</option>
+          <option value="0.0015">Concrete (n=0.0015)</option>
+        </select>
+      </div>
+      <!-- Pump -->
+      <div class="section">
+        <h4>Pump</h4>
+        <label><input type="checkbox" id="enablePump" checked> Enable</label>
+        <label for="pumpHead">Pump Head (m): <span id="pumpHeadValue">10</span></label>
+        <input type="range" id="pumpHead" min="0" max="50" value="10" step="1">
+      </div>
+      <!-- Pipe 3 -->
+      <div class="section">
+        <h4>Pipe 3</h4>
+        <label><input type="checkbox" id="enablePipe3" checked> Enable</label>
+        <label for="pipe3Length">Length (m): <span id="pipe3LengthValue">200</span></label>
+        <input type="range" id="pipe3Length" min="50" max="500" value="200" step="10">
+        <label for="pipe3Diameter">Diameter (mm): <span id="pipe3DiameterValue">300</span></label>
+        <input type="range" id="pipe3Diameter" min="50" max="500" value="300" step="10">
+        <label for="pipe3Material">Material:</label>
+        <select id="pipe3Material">
+          <option value="0.0001">PVC (n=0.0001)</option>
+          <option value="0.0004">Steel (n=0.0004)</option>
+          <option value="0.0015">Concrete (n=0.0015)</option>
+        </select>
+      </div>
+      <!-- Turbine -->
+      <div class="section">
+        <h4>Turbine</h4>
+        <label><input type="checkbox" id="enableTurbine" checked> Enable</label>
+        <label for="turbineHead">Head Extracted (m): <span id="turbineHeadValue">5</span></label>
+        <input type="range" id="turbineHead" min="0" max="20" value="5" step="1">
+      </div>
+      <!-- Pipe 4 -->
+      <div class="section">
+        <h4>Pipe 4</h4>
+        <label><input type="checkbox" id="enablePipe4" checked> Enable</label>
+        <label for="pipe4Length">Length (m): <span id="pipe4LengthValue">100</span></label>
+        <input type="range" id="pipe4Length" min="50" max="500" value="100" step="10">
+        <label for="pipe4Diameter">Diameter (mm): <span id="pipe4DiameterValue">200</span></label>
+        <input type="range" id="pipe4Diameter" min="50" max="500" value="200" step="10">
+        <label for="pipe4Material">Material:</label>
+        <select id="pipe4Material">
+          <option value="0.0001">PVC (n=0.0001)</option>
+          <option value="0.0004">Steel (n=0.0004)</option>
+          <option value="0.0015">Concrete (n=0.0015)</option>
+        </select>
+      </div>
+      <!-- Outlet -->
+      <div class="section">
+        <h4>Outlet</h4>
+        <label><input type="checkbox" id="enableOutlet" checked> Enable</label>
+        <label for="outletElevation">Elevation (m): <span id="outletElevationValue">5</span></label>
+        <input type="range" id="outletElevation" min="0" max="50" value="5" step="1">
+      </div>
     </div>
+    <div id="canvas-container"></div>
+    <div class="reset-button-container">
+      <button id="resetZoomButton">Reset Zoom</button>
+    </div>
+    <div id="info" class="info"></div>
+    <div class="calculation-steps">
+      <h3>Calculation Steps</h3>
+      <div id="calculation-steps-content"></div>
+      <div class="reset-button-container">
+        <button id="downloadReportButton">Download Report</button>
+      </div>
+    </div>
+  </div>
+  <script>
+    // Prevent duplicate p5.js initialization
+    if (typeof p5 !== 'undefined' && !window.p5Instance) {
+      window.p5Instance = true;
 
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Get all sliders
-            const sliders = document.querySelectorAll('input[type="range"]');
-            
-            // Update displayed values when sliders change
-            sliders.forEach(slider => {
-                const valueSpan = document.getElementById(slider.id + 'Value');
-                slider.addEventListener('input', function() {
-                    valueSpan.textContent = this.value;
-                    updateSimulation();
-                });
-            });
-            
-            // Initial simulation update
-            updateSimulation();
-            
-            function updateSimulation() {
-                // Get current values
-                const flowRate = parseFloat(document.getElementById('flowRate').value);
-                const diameter = parseFloat(document.getElementById('pipeDiameter').value);
-                const pumpHead = parseFloat(document.getElementById('pumpHead').value);
-                const pipeLength = parseFloat(document.getElementById('pipeLength').value);
-                const roughness = parseFloat(document.getElementById('roughness').value);
-                
-                // Calculate pipe parameters
-                const area = Math.PI * Math.pow(diameter/2, 2);
-                const velocity = flowRate / area;
-                const velocityHead = Math.pow(velocity, 2) / (2 * 9.81);
-                
-                // Darcy-Weisbach friction loss (simplified)
-                const reynolds = (velocity * diameter) / 1e-6; // Kinematic viscosity ~1e-6 m²/s for water
-                let frictionFactor;
-                
-                if (reynolds < 2000) {
-                    frictionFactor = 64 / reynolds; // Laminar flow
-                } else {
-                    // Colebrook-White approximation (turbulent)
-                    const relativeRoughness = roughness / (diameter * 1000);
-                    frictionFactor = 0.25 / Math.pow(Math.log10((relativeRoughness/3.7) + (5.74/Math.pow(reynolds,0.9))), 2);
-                }
-                
-                const frictionLoss = frictionFactor * (pipeLength/diameter) * velocityHead;
-                
-                // Update results display
-                document.getElementById('velocityValue').textContent = velocity.toFixed(3);
-                document.getElementById('velocityHead').textContent = velocityHead.toFixed(3);
-                document.getElementById('frictionLoss').textContent = frictionLoss.toFixed(3);
-                
-                // Pressure at pipe end (simplified)
-                const pressureEnd = pumpHead - velocityHead - frictionLoss;
-                document.getElementById('pressureEnd').textContent = pressureEnd.toFixed(3);
-                
-                // Update SVG visualization
-                updateSVG(pipeLength, pumpHead, velocityHead, frictionLoss);
-            }
-            
-            function updateSVG(pipeLength, pumpHead, velocityHead, frictionLoss) {
-                const svg = document.getElementById('pipeSVG');
-                const width = 800;
-                const height = 300;
-                const margin = 50;
-                
-                // Create a simple elevation profile (sinusoidal for demo)
-                const elevationPoints = [];
-                const hglPoints = [];
-                const eglPoints = [];
-                
-                for (let x = 0; x <= width; x += 10) {
-                    const xRatio = x / width;
-                    
-                    // Elevation profile (sin wave for demo)
-                    const elevation = 50 + 30 * Math.sin(xRatio * Math.PI * 2);
-                    elevationPoints.push(`${x},${height - margin - elevation}`);
-                    
-                    // HGL (starts at pump head, loses energy due to friction)
-                    const hgl = pumpHead - (frictionLoss * xRatio);
-                    hglPoints.push(`${x},${height - margin - hgl}`);
-                    
-                    // EGL (HGL + velocity head)
-                    const egl = hgl + velocityHead;
-                    eglPoints.push(`${x},${height - margin - egl}`);
-                }
-                
-                // Update SVG paths
-                document.getElementById('elevation').setAttribute('d', `M${elevationPoints.join(' L')}`);
-                document.getElementById('pipe').setAttribute('d', `M${elevationPoints.join(' L')}`);
-                document.getElementById('hgl').setAttribute('d', `M${hglPoints.join(' L')}`);
-                document.getElementById('egl').setAttribute('d', `M${eglPoints.join(' L')}`);
-            }
+      // System parameters
+      let reservoirElevation = 20;
+      let flowRate = 50;
+      let pipe1 = { length: 100, diameter: 200, roughness: 0.0001 };
+      let valveK = 0.2;
+      let pipe2 = { length: 150, diameter: 250, roughness: 0.0001 };
+      let pumpHead = 10;
+      let pipe3 = { length: 200, diameter: 300, roughness: 0.0001 };
+      let turbineHead = 5;
+      let pipe4 = { length: 100, diameter: 200, roughness: 0.0001 };
+      let outletElevation = 5;
+      let xMin = 0;
+      let xMax;
+      let yMin = 0;
+      let yMax = 80;
+
+      // Box selection variables
+      let isSelecting = false;
+      let selectStartX, selectStartY, selectEndX, selectEndY;
+
+      // Component enable states
+      let enabledComponents = {
+        reservoir: true,
+        pipe1: true,
+        valve: true,
+        pipe2: true,
+        pump: true,
+        pipe3: true,
+        turbine: true,
+        pipe4: true,
+        outlet: true
+      };
+
+      function setup() {
+        let canvas = createCanvas(900, 500);
+        canvas.parent('canvas-container');
+        updateControls();
+        // Reset zoom button
+        document.getElementById('resetZoomButton').addEventListener('click', () => {
+          const { totalLength } = calculateHydraulics();
+          xMin = 0;
+          xMax = totalLength;
+          yMin = 0;
+          yMax = 80;
         });
-    </script>
+        // Download report button
+        document.getElementById('downloadReportButton').addEventListener('click', () => {
+          // Save canvas as image
+          saveCanvas('pipeline_graph', 'png');
+          // Note: Actual PDF generation requires server-side LaTeX compilation or a client-side library like jsPDF
+          alert('Canvas saved as pipeline_graph.png. LaTeX report generation requires server-side compilation. Please compile the provided LaTeX template with the saved image.');
+        });
+      }
+
+      function mouseWheel(event) {
+        const { totalLength } = calculateHydraulics();
+        const { xScale, yScale, xOffset, yOffset } = getScalesAndRanges();
+
+        // Allow page scrolling if mouse is outside canvas or Alt key is pressed
+        if (event.altKey || mouseX < xOffset || mouseX > width - 50 || mouseY < 50 || mouseY > yOffset) {
+          return true; // Allow default page scrolling
+        }
+
+        const zoomFactor = 0.1;
+
+        // Get mouse position relative to data coordinates
+        const mouseXData = xMin + (mouseX - xOffset) / xScale;
+        const mouseYData = yMin + (yOffset - mouseY) / yScale;
+
+        // Adjust x-range
+        let xRange = xMax - xMin;
+        const newXRange = xRange * (event.deltaY > 0 ? 1 + zoomFactor : 1 - zoomFactor);
+        const minXRange = 10;
+        const maxXRange = totalLength;
+        xRange = Math.max(minXRange, Math.min(maxXRange, newXRange));
+        const xFraction = (mouseXData - xMin) / (xMax - xMin);
+        xMin = mouseXData - xFraction * xRange;
+        xMax = mouseXData + (1 - xFraction) * xRange;
+        xMin = Math.max(0, xMin);
+        xMax = Math.min(totalLength, xMax);
+
+        // Adjust y-range
+        let yRange = yMax - yMin;
+        const newYRange = yRange * (event.deltaY > 0 ? 1 + zoomFactor : 1 - zoomFactor);
+        const minYRange = 10;
+        const maxYRange = 100;
+        yRange = Math.max(minYRange, Math.min(maxYRange, newYRange));
+        const yFraction = (mouseYData - yMin) / (yMax - yMin);
+        yMin = mouseYData - yFraction * yRange;
+        yMax = mouseYData + (1 - yFraction) * yRange;
+
+        return false; // Prevent page scrolling during zoom
+      }
+
+      function mousePressed() {
+        if (mouseX >= 50 && mouseX <= width - 50 && mouseY >= 50 && mouseY <= height - 50) {
+          isSelecting = true;
+          selectStartX = mouseX;
+          selectStartY = mouseY;
+          selectEndX = mouseX;
+          selectEndY = mouseY;
+        }
+      }
+
+      function mouseDragged() {
+        if (isSelecting) {
+          selectEndX = constrain(mouseX, 50, width - 50);
+          selectEndY = constrain(mouseY, 50, height - 50);
+        }
+      }
+
+      function mouseReleased() {
+        if (isSelecting) {
+          isSelecting = false;
+          const { xScale, yScale, xOffset, yOffset } = getScalesAndRanges();
+          const x1 = xMin + (Math.min(selectStartX, selectEndX) - xOffset) / xScale;
+          const x2 = xMin + (Math.max(selectStartX, selectEndX) - xOffset) / xScale;
+          const y1 = yMin + (yOffset - Math.max(selectStartY, selectEndY)) / yScale;
+          const y2 = yMin + (yOffset - Math.min(selectStartY, selectEndY)) / yScale;
+
+          // Only zoom if selection is large enough
+          if (Math.abs(x2 - x1) > 10 && Math.abs(y2 - y1) > 5) {
+            xMin = Math.max(0, x1);
+            xMax = Math.min(calculateHydraulics().totalLength, x2);
+            yMin = y1;
+            yMax = y2;
+          }
+        }
+      }
+
+      function draw() {
+        background(255);
+        drawAxes();
+        drawSystem();
+        drawHGLandEGL();
+        drawLabels();
+        // Draw selection box
+        if (isSelecting) {
+          noFill();
+          stroke(0, 0, 255);
+          strokeWeight(1);
+          rectMode(CORNERS);
+          rect(selectStartX, selectStartY, selectEndX, selectEndY);
+          rectMode(CORNER);
+        }
+        // Update calculation steps
+        updateCalculationSteps();
+      }
+
+      function updateControls() {
+        // Reservoir
+        document.getElementById('enableReservoir').addEventListener('change', (e) => {
+          enabledComponents.reservoir = e.target.checked;
+          resetZoom();
+        });
+        document.getElementById('reservoirElevation').addEventListener('input', (e) => {
+          reservoirElevation = parseFloat(e.target.value);
+          document.getElementById('reservoirElevationValue').textContent = reservoirElevation;
+          resetZoom();
+        });
+        // Flow Rate
+        document.getElementById('flowRate').addEventListener('input', (e) => {
+          flowRate = parseFloat(e.target.value);
+          document.getElementById('flowRateValue').textContent = flowRate;
+        });
+        // Pipe 1
+        document.getElementById('enablePipe1').addEventListener('change', (e) => {
+          enabledComponents.pipe1 = e.target.checked;
+          checkPipeValidity();
+          resetZoom();
+        });
+        document.getElementById('pipe1Length').addEventListener('input', (e) => {
+          pipe1.length = parseFloat(e.target.value);
+          document.getElementById('pipe1LengthValue').textContent = pipe1.length;
+          resetZoom();
+        });
+        document.getElementById('pipe1Diameter').addEventListener('input', (e) => {
+          pipe1.diameter = parseFloat(e.target.value);
+          document.getElementById('pipe1DiameterValue').textContent = pipe1.diameter;
+        });
+        document.getElementById('pipe1Material').addEventListener('change', (e) => {
+          pipe1.roughness = parseFloat(e.target.value);
+        });
+        // Valve
+        document.getElementById('enableValve').addEventListener('change', (e) => {
+          enabledComponents.valve = e.target.checked;
+        });
+        document.getElementById('valveType').addEventListener('change', (e) => {
+          valveK = parseFloat(e.target.value);
+        });
+        // Pipe 2
+        document.getElementById('enablePipe2').addEventListener('change', (e) => {
+          enabledComponents.pipe2 = e.target.checked;
+          checkPipeValidity();
+          resetZoom();
+        });
+        document.getElementById('pipe2Length').addEventListener('input', (e) => {
+          pipe2.length = parseFloat(e.target.value);
+          document.getElementById('pipe2LengthValue').textContent = pipe2.length;
+          resetZoom();
+        });
+        document.getElementById('pipe2Diameter').addEventListener('input', (e) => {
+          pipe2.diameter = parseFloat(e.target.value);
+          document.getElementById('pipe2DiameterValue').textContent = pipe2.diameter;
+        });
+        document.getElementById('pipe2Material').addEventListener('change', (e) => {
+          pipe2.roughness = parseFloat(e.target.value);
+        });
+        // Pump
+        document.getElementById('enablePump').addEventListener('change', (e) => {
+          enabledComponents.pump = e.target.checked;
+        });
+        document.getElementById('pumpHead').addEventListener('input', (e) => {
+          pumpHead = parseFloat(e.target.value);
+          document.getElementById('pumpHeadValue').textContent = pumpHead;
+        });
+        // Pipe 3
+        document.getElementById('enablePipe3').addEventListener('change', (e) => {
+          enabledComponents.pipe3 = e.target.checked;
+          checkPipeValidity();
+          resetZoom();
+        });
+        document.getElementById('pipe3Length').addEventListener('input', (e) => {
+          pipe3.length = parseFloat(e.target.value);
+          document.getElementById('pipe3LengthValue').textContent = pipe3.length;
+          resetZoom();
+        });
+        document.getElementById('pipe3Diameter').addEventListener('input', (e) => {
+          pipe3.diameter = parseFloat(e.target.value);
+          document.getElementById('pipe3DiameterValue').textContent = pipe3.diameter;
+        });
+        document.getElementById('pipe3Material').addEventListener('change', (e) => {
+          pipe3.roughness = parseFloat(e.target.value);
+        });
+        // Turbine
+        document.getElementById('enableTurbine').addEventListener('change', (e) => {
+          enabledComponents.turbine = e.target.checked;
+        });
+        document.getElementById('turbineHead').addEventListener('input', (e) => {
+          turbineHead = parseFloat(e.target.value);
+          document.getElementById('turbineHeadValue').textContent = turbineHead;
+        });
+        // Pipe 4
+        document.getElementById('enablePipe4').addEventListener('change', (e) => {
+          enabledComponents.pipe4 = e.target.checked;
+          checkPipeValidity();
+          resetZoom();
+        });
+        document.getElementById('pipe4Length').addEventListener('input', (e) => {
+          pipe4.length = parseFloat(e.target.value);
+          document.getElementById('pipe4LengthValue').textContent = pipe4.length;
+          resetZoom();
+        });
+        document.getElementById('pipe4Diameter').addEventListener('input', (e) => {
+          pipe4.diameter = parseFloat(e.target.value);
+          document.getElementById('pipe4DiameterValue').textContent = pipe4.diameter;
+        });
+        document.getElementById('pipe4Material').addEventListener('change', (e) => {
+          pipe4.roughness = parseFloat(e.target.value);
+        });
+        // Outlet
+        document.getElementById('enableOutlet').addEventListener('change', (e) => {
+          enabledComponents.outlet = e.target.checked;
+          resetZoom();
+        });
+        document.getElementById('outletElevation').addEventListener('input', (e) => {
+          outletElevation = parseFloat(e.target.value);
+          document.getElementById('outletElevationValue').textContent = outletElevation;
+          resetZoom();
+        });
+      }
+
+      function resetZoom() {
+        const { totalLength } = calculateHydraulics();
+        xMin = 0;
+        xMax = totalLength;
+        yMin = 0;
+        yMax = 80;
+      }
+
+      function checkPipeValidity() {
+        if (!enabledComponents.pipe1 && !enabledComponents.pipe2 && !enabledComponents.pipe3 && !enabledComponents.pipe4) {
+          enabledComponents.pipe1 = true;
+          document.getElementById('enablePipe1').checked = true;
+          resetZoom();
+        }
+      }
+
+      function calculateHydraulics() {
+        const g = 9.81;
+        const Q = flowRate / 1000;
+        const points = [];
+        let x = 0;
+        let HGL = enabledComponents.reservoir ? reservoirElevation : 10;
+        let cumulativeHeadLoss = 0;
+        let componentPoints = [];
+
+        const components = [];
+        if (enabledComponents.reservoir) components.push({ type: 'reservoir', length: 0 });
+        if (enabledComponents.pipe1) components.push({ type: 'pipe1', length: pipe1.length });
+        if (enabledComponents.valve) components.push({ type: 'valve', length: 0 });
+        if (enabledComponents.pipe2) components.push({ type: 'pipe2', length: pipe2.length });
+        if (enabledComponents.pump) components.push({ type: 'pump', length: 0 });
+        if (enabledComponents.pipe3) components.push({ type: 'pipe3', length: pipe3.length });
+        if (enabledComponents.turbine) components.push({ type: 'turbine', length: 0 });
+        if (enabledComponents.pipe4) components.push({ type: 'pipe4', length: pipe4.length });
+        if (enabledComponents.outlet) components.push({ type: 'outlet', length: 0 });
+
+        const totalLength = (enabledComponents.pipe1 ? pipe1.length : 0) +
+                           (enabledComponents.pipe2 ? pipe2.length : 0) +
+                           (enabledComponents.pipe3 ? pipe3.length : 0) +
+                           (enabledComponents.pipe4 ? pipe4.length : 0) || 1;
+
+        if (!xMax) xMax = totalLength;
+
+        function getGroundElevation(x) {
+          const startElevation = enabledComponents.reservoir ? reservoirElevation : 10;
+          const endElevation = enabledComponents.outlet ? outletElevation : 0;
+          return startElevation + (endElevation - startElevation) * (x / totalLength);
+        }
+
+        function calculatePipeLoss(pipe, length, startHGL, compName) {
+          const d = pipe.diameter / 1000;
+          const A = PI * (d / 2) ** 2;
+          const V = Q / A;
+          const velocityHead = (V ** 2) / (2 * g);
+          const Re = (V * d) / (1.004e-6);
+          let f = 0.02;
+          for (let i = 0; i < 10; i++) {
+            f = 1 / (-2 * Math.log10((pipe.roughness / (3.7 * d)) + (2.51 / (Re * Math.sqrt(f))))) ** 2;
+          }
+          const hf = f * (length / d) * (V ** 2) / (2 * g);
+          const n = Math.max(10, Math.floor(length / 10));
+          const dx = length / n;
+          const points = [];
+          for (let i = 0; i <= n; i++) {
+            const xLocal = i * dx;
+            const frictionLoss = hf * (xLocal / length);
+            const HGL = startHGL - frictionLoss;
+            const EGL = HGL + velocityHead;
+            const headLoss = frictionLoss;
+            const groundElevation = getGroundElevation(x + xLocal);
+            const residualHead = HGL - groundElevation;
+            points.push({ x: x + xLocal, elevation: groundElevation, HGL, EGL, velocityHead, V, headLoss, residualHead });
+          }
+          x += length;
+          cumulativeHeadLoss += hf;
+          return {
+            points,
+            calcDetails: {
+              compName,
+              length,
+              diameter: pipe.diameter,
+              roughness: pipe.roughness,
+              area: A,
+              velocity: V,
+              velocityHead,
+              reynolds: Re,
+              frictionFactor: f,
+              frictionLoss: hf,
+              HGL: points[points.length - 1].HGL,
+              EGL: points[points.length - 1].EGL,
+              headLoss: cumulativeHeadLoss,
+              residualHead: points[points.length - 1].residualHead,
+              xEnd: x
+            }
+          };
+        }
+
+        for (let comp of components) {
+          let segmentPoints = [];
+          let calcDetails = {};
+          if (comp.type === 'reservoir') {
+            const velocityHead = 0;
+            const groundElevation = getGroundElevation(x);
+            const residualHead = HGL - groundElevation;
+            segmentPoints.push({ x, elevation: groundElevation, HGL, EGL: HGL + velocityHead, velocityHead: 0, V: 0, headLoss: cumulativeHeadLoss, residualHead });
+            calcDetails = { compName: 'Reservoir', HGL, EGL: HGL, headLoss: cumulativeHeadLoss, residualHead, xEnd: x, elevation: reservoirElevation };
+            componentPoints.push({ name: 'Reservoir', HGL, EGL: HGL, headLoss: cumulativeHeadLoss, residualHead, x, details: calcDetails });
+          } else if (comp.type === 'pipe1') {
+            const result = calculatePipeLoss(pipe1, comp.length, HGL, 'Pipe 1');
+            segmentPoints = result.points;
+            calcDetails = result.calcDetails;
+            HGL = segmentPoints[segmentPoints.length - 1].HGL;
+            segmentPoints.forEach(p => p.headLoss = cumulativeHeadLoss);
+            componentPoints.push({ name: 'End Pipe 1', HGL, EGL: segmentPoints[segmentPoints.length - 1].EGL, headLoss: cumulativeHeadLoss, residualHead: segmentPoints[segmentPoints.length - 1].residualHead, x, details: calcDetails });
+          } else if (comp.type === 'valve') {
+            const d = (enabledComponents.pipe1 ? pipe1.diameter : enabledComponents.pipe2 ? pipe2.diameter : enabledComponents.pipe3 ? pipe3.diameter : pipe4.diameter) / 1000;
+            const A = PI * (d / 2) ** 2;
+            const V = Q / A;
+            const velocityHead = (V ** 2) / (2 * g);
+            const minorLoss = valveK * velocityHead;
+            HGL -= minorLoss;
+            cumulativeHeadLoss += minorLoss;
+            const groundElevation = getGroundElevation(x);
+            const residualHead = HGL - groundElevation;
+            segmentPoints.push({ x, elevation: groundElevation, HGL, EGL: HGL + velocityHead, velocityHead, V, headLoss: cumulativeHeadLoss, residualHead });
+            calcDetails = { compName: 'Valve', diameter: d * 1000, area: A, velocity: V, velocityHead, minorLoss, HGL, EGL: HGL + velocityHead, headLoss: cumulativeHeadLoss, residualHead, xEnd: x, valveK };
+            componentPoints.push({ name: 'After Valve', HGL, EGL: HGL + velocityHead, headLoss: cumulativeHeadLoss, residualHead, x, details: calcDetails });
+          } else if (comp.type === 'pipe2') {
+            const result = calculatePipeLoss(pipe2, comp.length, HGL, 'Pipe 2');
+            segmentPoints = result.points;
+            calcDetails = result.calcDetails;
+            HGL = segmentPoints[segmentPoints.length - 1].HGL;
+            segmentPoints.forEach(p => p.headLoss = cumulativeHeadLoss);
+            componentPoints.push({ name: 'End Pipe 2', HGL, EGL: segmentPoints[segmentPoints.length - 1].EGL, headLoss: cumulativeHeadLoss, residualHead: segmentPoints[segmentPoints.length - 1].residualHead, x, details: calcDetails });
+          } else if (comp.type === 'pump') {
+            const d = (enabledComponents.pipe2 ? pipe2.diameter : enabledComponents.pipe3 ? pipe3.diameter : pipe4.diameter) / 1000;
+            const A = PI * (d / 2) ** 2;
+            const V = Q / A;
+            const velocityHead = (V ** 2) / (2 * g);
+            HGL += pumpHead;
+            cumulativeHeadLoss -= pumpHead;
+            const groundElevation = getGroundElevation(x);
+            const residualHead = HGL - groundElevation;
+            segmentPoints.push({ x, elevation: groundElevation, HGL, EGL: HGL + velocityHead, velocityHead, V, headLoss: cumulativeHeadLoss, residualHead });
+            calcDetails = { compName: 'Pump', diameter: d * 1000, area: A, velocity: V, velocityHead, pumpHead, HGL, EGL: HGL + velocityHead, headLoss: cumulativeHeadLoss, residualHead, xEnd: x };
+            componentPoints.push({ name: 'After Pump', HGL, EGL: HGL + velocityHead, headLoss: cumulativeHeadLoss, residualHead, x, details: calcDetails });
+          } else if (comp.type === 'pipe3') {
+            const result = calculatePipeLoss(pipe3, comp.length, HGL, 'Pipe 3');
+            segmentPoints = result.points;
+            calcDetails = result.calcDetails;
+            HGL = segmentPoints[segmentPoints.length - 1].HGL;
+            segmentPoints.forEach(p => p.headLoss = cumulativeHeadLoss);
+            componentPoints.push({ name: 'End Pipe 3', HGL, EGL: segmentPoints[segmentPoints.length - 1].EGL, headLoss: cumulativeHeadLoss, residualHead: segmentPoints[segmentPoints.length - 1].residualHead, x, details: calcDetails });
+          } else if (comp.type === 'turbine') {
+            const d = (enabledComponents.pipe3 ? pipe3.diameter : pipe4.diameter) / 1000;
+            const A = PI * (d / 2) ** 2;
+            const V = Q / A;
+            const velocityHead = (V ** 2) / (2 * g);
+            HGL -= turbineHead;
+            cumulativeHeadLoss += turbineHead;
+            const groundElevation = getGroundElevation(x);
+            const residualHead = HGL - groundElevation;
+            segmentPoints.push({ x, elevation: groundElevation, HGL, EGL: HGL + velocityHead, velocityHead, V, headLoss: cumulativeHeadLoss, residualHead });
+            calcDetails = { compName: 'Turbine', diameter: d * 1000, area: A, velocity: V, velocityHead, turbineHead, HGL, EGL: HGL + velocityHead, headLoss: cumulativeHeadLoss, residualHead, xEnd: x };
+            componentPoints.push({ name: 'After Turbine', HGL, EGL: HGL + velocityHead, headLoss: cumulativeHeadLoss, residualHead, x, details: calcDetails });
+          } else if (comp.type === 'pipe4') {
+            const result = calculatePipeLoss(pipe4, comp.length, HGL, 'Pipe 4');
+            segmentPoints = result.points;
+            calcDetails = result.calcDetails;
+            HGL = segmentPoints[segmentPoints.length - 1].HGL;
+            segmentPoints.forEach(p => p.headLoss = cumulativeHeadLoss);
+            componentPoints.push({ name: 'End Pipe 4', HGL, EGL: segmentPoints[segmentPoints.length - 1].EGL, headLoss: cumulativeHeadLoss, residualHead: segmentPoints[segmentPoints.length - 1].residualHead, x, details: calcDetails });
+          } else if (comp.type === 'outlet') {
+            const d = (enabledComponents.pipe4 ? pipe4.diameter : enabledComponents.pipe3 ? pipe3.diameter : enabledComponents.pipe2 ? pipe2.diameter : pipe1.diameter) / 1000;
+            const A = PI * (d / 2) ** 2;
+            const V = Q / A;
+            const velocityHead = (V ** 2) / (2 * g);
+            const groundElevation = getGroundElevation(x);
+            const residualHead = HGL - groundElevation;
+            segmentPoints.push({ x, elevation: groundElevation, HGL, EGL: HGL + velocityHead, velocityHead, V, headLoss: cumulativeHeadLoss, residualHead });
+            calcDetails = { compName: 'Outlet', diameter: d * 1000, area: A, velocity: V, velocityHead, HGL, EGL: HGL + velocityHead, headLoss: cumulativeHeadLoss, residualHead, xEnd: x, elevation: outletElevation };
+            componentPoints.push({ name: 'Outlet', HGL, EGL: HGL + velocityHead, headLoss: cumulativeHeadLoss, residualHead, x, details: calcDetails });
+          }
+          points.push(...segmentPoints);
+        }
+
+        let infoHTML = '<h4>Component HGL/EGL/Head Loss/Residual Head Values</h4>';
+        for (let cp of componentPoints) {
+          if (cp.x >= xMin && cp.x <= xMax) {
+            infoHTML += `${cp.name}: HGL = ${cp.HGL.toFixed(2)} m, EGL = ${cp.EGL.toFixed(2)} m, Head Loss = ${cp.headLoss.toFixed(2)} m, Residual Head = ${cp.residualHead.toFixed(2)} m<br>`;
+          }
+        }
+        document.getElementById('info').innerHTML = infoHTML;
+
+        return { points, componentPoints, totalLength };
+      }
+
+      function updateCalculationSteps() {
+        const { componentPoints } = calculateHydraulics();
+        const g = 9.81;
+        const Q = flowRate / 1000;
+        let stepsHTML = '<ul>';
+        for (let cp of componentPoints) {
+          const details = cp.details;
+          stepsHTML += `<li><strong>${details.compName}</strong><br>`;
+          if (details.compName === 'Reservoir') {
+            stepsHTML += `Initial HGL = ${details.HGL.toFixed(2)} m (water level = ${details.elevation.toFixed(2)} m)<br>`;
+            stepsHTML += `EGL = HGL + 0 = ${details.EGL.toFixed(2)} m<br>`;
+            stepsHTML += `Ground Elevation = ${details.residualHead.toFixed(2)} m<br>`;
+            stepsHTML += `Residual Head = HGL - Ground Elevation = ${details.residualHead.toFixed(2)} m<br>`;
+            stepsHTML += `Cumulative Head Loss = ${details.headLoss.toFixed(2)} m<br>`;
+            stepsHTML += `Position: x = ${details.xEnd.toFixed(2)} m`;
+          } else if (details.compName.includes('Pipe')) {
+            stepsHTML += `Length = ${details.length.toFixed(2)} m, Diameter = ${details.diameter.toFixed(2)} mm, Roughness = ${details.roughness.toFixed(6)} m<br>`;
+            stepsHTML += `Cross-sectional Area: A = π(d/2)² = ${details.area.toFixed(6)} m²<br>`;
+            stepsHTML += `Velocity: V = Q/A = ${details.velocity.toFixed(2)} m/s<br>`;
+            stepsHTML += `Velocity Head: V²/(2g) = ${details.velocityHead.toFixed(2)} m<br>`;
+            stepsHTML += `Reynolds Number: Re = (V·d)/ν = ${details.reynolds.toFixed(0)}<br>`;
+            stepsHTML += `Friction Factor: Colebrook-White equation, f = ${details.frictionFactor.toFixed(4)}<br>`;
+            stepsHTML += `Friction Loss: h_f = f·(L/d)·(V²/(2g)) = ${details.frictionLoss.toFixed(2)} m<br>`;
+            stepsHTML += `HGL = Previous HGL - h_f = ${details.HGL.toFixed(2)} m<br>`;
+            stepsHTML += `EGL = HGL + V²/(2g) = ${details.EGL.toFixed(2)} m<br>`;
+            stepsHTML += `Cumulative Head Loss = ${details.headLoss.toFixed(2)} m<br>`;
+            stepsHTML += `Residual Head = HGL - Ground Elevation = ${details.residualHead.toFixed(2)} m<br>`;
+            stepsHTML += `Position: x = ${details.xEnd.toFixed(2)} m`;
+          } else if (details.compName === 'Valve') {
+            stepsHTML += `Diameter = ${details.diameter.toFixed(2)} mm, K = ${details.valveK.toFixed(2)}<br>`;
+            stepsHTML += `Area: A = π(d/2)² = ${details.area.toFixed(6)} m²<br>`;
+            stepsHTML += `Velocity: V = Q/A = ${details.velocity.toFixed(2)} m/s<br>`;
+            stepsHTML += `Velocity Head: V²/(2g) = ${details.velocityHead.toFixed(2)} m<br>`;
+            stepsHTML += `Minor Loss: h_m = K·(V²/(2g)) = ${details.minorLoss.toFixed(2)} m<br>`;
+            stepsHTML += `HGL = Previous HGL - h_m = ${details.HGL.toFixed(2)} m<br>`;
+            stepsHTML += `EGL = HGL + V²/(2g) = ${details.EGL.toFixed(2)} m<br>`;
+            stepsHTML += `Cumulative Head Loss = ${details.headLoss.toFixed(2)} m<br>`;
+            stepsHTML += `Residual Head = HGL - Ground Elevation = ${details.residualHead.toFixed(2)} m<br>`;
+            stepsHTML += `Position: x = ${details.xEnd.toFixed(2)} m`;
+          } else if (details.compName === 'Pump') {
+            stepsHTML += `Pump Head Added = ${details.pumpHead.toFixed(2)} m<br>`;
+            stepsHTML += `Diameter = ${details.diameter.toFixed(2)} mm<br>`;
+            stepsHTML += `Area: A = π(d/2)² = ${details.area.toFixed(6)} m²<br>`;
+            stepsHTML += `Velocity: V = Q/A = ${details.velocity.toFixed(2)} m/s<br>`;
+            stepsHTML += `Velocity Head: V²/(2g) = ${details.velocityHead.toFixed(2)} m<br>`;
+            stepsHTML += `HGL = Previous HGL + Pump Head = ${details.HGL.toFixed(2)} m<br>`;
+            stepsHTML += `EGL = HGL + V²/(2g) = ${details.EGL.toFixed(2)} m<br>`;
+            stepsHTML += `Cumulative Head Loss = ${details.headLoss.toFixed(2)} m<br>`;
+            stepsHTML += `Residual Head = HGL - Ground Elevation = ${details.residualHead.toFixed(2)} m<br>`;
+            stepsHTML += `Position: x = ${details.xEnd.toFixed(2)} m`;
+          } else if (details.compName === 'Turbine') {
+            stepsHTML += `Head Extracted = ${details.turbineHead.toFixed(2)} m<br>`;
+            stepsHTML += `Diameter = ${details.diameter.toFixed(2)} mm<br>`;
+            stepsHTML += `Area: A = π(d/2)² = ${details.area.toFixed(6)} m²<br>`;
+            stepsHTML += `Velocity: V = Q/A = ${details.velocity.toFixed(2)} m/s<br>`;
+            stepsHTML += `Velocity Head: V²/(2g) = ${details.velocityHead.toFixed(2)} m<br>`;
+            stepsHTML += `HGL = Previous HGL - Turbine Head = ${details.HGL.toFixed(2)} m<br>`;
+            stepsHTML += `EGL = HGL + V²/(2g) = ${details.EGL.toFixed(2)} m<br>`;
+            stepsHTML += `Cumulative Head Loss = ${details.headLoss.toFixed(2)} m<br>`;
+            stepsHTML += `Residual Head = HGL - Ground Elevation = ${details.residualHead.toFixed(2)} m<br>`;
+            stepsHTML += `Position: x = ${details.xEnd.toFixed(2)} m`;
+          } else if (details.compName === 'Outlet') {
+            stepsHTML += `Elevation = ${details.elevation.toFixed(2)} m<br>`;
+            stepsHTML += `Diameter = ${details.diameter.toFixed(2)} mm<br>`;
+            stepsHTML += `Area: A = π(d/2)² = ${details.area.toFixed(6)} m²<br>`;
+            stepsHTML += `Velocity: V = Q/A = ${details.velocity.toFixed(2)} m/s<br>`;
+            stepsHTML += `Velocity Head: V²/(2g) = ${details.velocityHead.toFixed(2)} m<br>`;
+            stepsHTML += `HGL = ${details.HGL.toFixed(2)} m<br>`;
+            stepsHTML += `EGL = HGL + V²/(2g) = ${details.EGL.toFixed(2)} m<br>`;
+            stepsHTML += `Cumulative Head Loss = ${details.headLoss.toFixed(2)} m<br>`;
+            stepsHTML += `Residual Head = HGL - Ground Elevation = ${details.residualHead.toFixed(2)} m<br>`;
+            stepsHTML += `Position: x = ${details.xEnd.toFixed(2)} m`;
+          }
+          stepsHTML += '</li>';
+        }
+        stepsHTML += '</ul>';
+        document.getElementById('calculation-steps-content').innerHTML = stepsHTML;
+      }
+
+      function getScalesAndRanges() {
+        const xScale = (width - 100) / (xMax - xMin);
+        const yScale = (height - 100) / (yMax - yMin);
+        const xOffset = 50;
+        const yOffset = height - 50;
+        return { xScale, yScale, xOffset, yOffset };
+      }
+
+      function drawAxes() {
+        const { totalLength } = calculateHydraulics();
+        const { xScale, yScale, xOffset, yOffset } = getScalesAndRanges();
+
+        stroke(0);
+        strokeWeight(1);
+        line(xOffset, yOffset, width - 50, yOffset); // X-axis
+        line(xOffset, yOffset, xOffset, 50); // Y-axis
+
+        // X-axis labels (below graph)
+        textAlign(CENTER);
+        textSize(12);
+        fill(0);
+        text('Distance (m)', width / 2, yOffset + 30); // Below canvas
+        textSize(10);
+        let xPositions = [];
+        let x = 0;
+        if (enabledComponents.reservoir) xPositions.push(x);
+        if (enabledComponents.pipe1) { x += pipe1.length; xPositions.push(x); }
+        if (enabledComponents.valve) xPositions.push(x);
+        if (enabledComponents.pipe2) { x += pipe2.length; xPositions.push(x); }
+        if (enabledComponents.pump) xPositions.push(x);
+        if (enabledComponents.pipe3) { x += pipe3.length; xPositions.push(x); }
+        if (enabledComponents.turbine) xPositions.push(x);
+        if (enabledComponents.pipe4) { x += pipe4.length; xPositions.push(x); }
+        if (enabledComponents.outlet) xPositions.push(x);
+
+        for (let xPos of xPositions) {
+          if (xPos >= xMin && xPos <= xMax) {
+            const x = xOffset + (xPos - xMin) * xScale;
+            line(x, yOffset, x, yOffset - 5); // Tick mark upward
+            text(Math.round(xPos), x, yOffset + 15); // Below axis
+          }
+        }
+
+        // Y-axis labels (left of graph)
+        textAlign(RIGHT);
+        textSize(12);
+        push();
+        translate(xOffset - 40, height / 2);
+        rotate(-PI / 2);
+        text('Elevation/Head (m)', 0, 0); // Left of canvas
+        pop();
+        textSize(10);
+        for (let h = Math.ceil(yMin / 10) * 10; h <= yMax; h += 10) {
+          const y = yOffset - (h - yMin) * yScale;
+          if (y >= 50 && y <= yOffset) {
+            line(xOffset, y, xOffset + 5, y); // Tick mark rightward
+            text(h, xOffset - 10, y + 4); // Left of axis
+          }
+        }
+      }
+
+      function drawSystem() {
+        const { points, totalLength } = calculateHydraulics();
+        const { xScale, yScale, xOffset, yOffset } = getScalesAndRanges();
+
+        stroke(139, 69, 19);
+        fill(139, 69, 19);
+        beginShape();
+        vertex(xOffset, yOffset);
+        for (let p of points) {
+          if (p.x >= xMin && p.x <= xMax) {
+            vertex(xOffset + (p.x - xMin) * xScale, yOffset - (p.elevation - yMin) * yScale);
+          }
+        }
+        vertex(width - 50, yOffset);
+        endShape(CLOSE);
+
+        let x = 0;
+        const componentX = [];
+        if (enabledComponents.reservoir && 0 >= xMin && 0 <= xMax) {
+          componentX.push(xOffset);
+          fill(0, 0, 255, 100);
+          rect(xOffset, yOffset - (reservoirElevation - yMin) * yScale, 20, (reservoirElevation - yMin) * yScale);
+          x += 0;
+        }
+        if (enabledComponents.pipe1) x += pipe1.length;
+        if (enabledComponents.pipe1 && x >= xMin && x <= xMax) componentX.push(xOffset + (x - xMin) * xScale);
+        if (enabledComponents.valve && x >= xMin && x <= xMax) {
+          componentX.push(xOffset + (x - xMin) * xScale);
+          fill(100);
+          triangle(
+            xOffset + (x - xMin) * xScale - 10, yOffset - 5,
+            xOffset + (x - xMin) * xScale + 10, yOffset - 5,
+            xOffset + (x - xMin) * xScale, yOffset - 15
+          );
+        }
+        if (enabledComponents.pipe2) x += pipe2.length;
+        if (enabledComponents.pipe2 && x >= xMin && x <= xMax) componentX.push(xOffset + (x - xMin) * xScale);
+        if (enabledComponents.pump && x >= xMin && x <= xMax) {
+          componentX.push(xOffset + (x - xMin) * xScale);
+          fill(0, 255, 0);
+          ellipse(xOffset + (x - xMin) * xScale, yOffset - 10, 20, 20);
+        }
+        if (enabledComponents.pipe3) x += pipe3.length;
+        if (enabledComponents.pipe3 && x >= xMin && x <= xMax) componentX.push(xOffset + (x - xMin) * xScale);
+        if (enabledComponents.turbine && x >= xMin && x <= xMax) {
+          componentX.push(xOffset + (x - xMin) * xScale);
+          fill(255, 165, 0);
+          push();
+          translate(xOffset + (x - xMin) * xScale, yOffset - 10);
+          rotate(PI / 4);
+          rect(-10, -10, 14, 14);
+          pop();
+        }
+        if (enabledComponents.pipe4) x += pipe4.length;
+        if (enabledComponents.pipe4 && x >= xMin && x <= xMax) componentX.push(xOffset + (x - xMin) * xScale);
+        if (enabledComponents.outlet && x >= xMin && x <= xMax) {
+          componentX.push(xOffset + (x - xMin) * xScale);
+          fill(0, 0, 255, 100);
+          rect(xOffset + (x - xMin) * xScale, yOffset - (outletElevation - yMin) * yScale, 20, (outletElevation - yMin) * yScale);
+        }
+      }
+
+      function drawHGLandEGL() {
+        const { points } = calculateHydraulics();
+        const { xScale, yScale, xOffset, yOffset } = getScalesAndRanges();
+
+        stroke(0, 0, 255);
+        strokeWeight(2);
+        noFill();
+        beginShape();
+        for (let p of points) {
+          if (p.x >= xMin && p.x <= xMax) {
+            vertex(xOffset + (p.x - xMin) * xScale, yOffset - (p.HGL - yMin) * yScale);
+          }
+        }
+        endShape();
+
+        stroke(255, 0, 0);
+        beginShape();
+        for (let p of points) {
+          if (p.x >= xMin && p.x <= xMax) {
+            vertex(xOffset + (p.x - xMin) * xScale, yOffset - (p.EGL - yMin) * yScale);
+          }
+        }
+        endShape();
+
+        stroke(0, 128, 0);
+        beginShape();
+        for (let p of points) {
+          if (p.x >= xMin && p.x <= xMax) {
+            vertex(xOffset + (p.x - xMin) * xScale, yOffset - ((p.HGL - p.headLoss) - yMin) * yScale);
+          }
+        }
+        endShape();
+
+        stroke(128, 0, 128); // Purple for residual head
+        beginShape();
+        for (let p of points) {
+          if (p.x >= xMin && p.x <= xMax) {
+            vertex(xOffset + (p.x - xMin) * xScale, yOffset - (p.residualHead - yMin) * yScale);
+          }
+        }
+        endShape();
+        strokeWeight(1);
+      }
+
+      function drawLabels() {
+        const { componentPoints } = calculateHydraulics();
+        const { xScale, yScale, xOffset, yOffset } = getScalesAndRanges();
+
+        textSize(10);
+        textAlign(CENTER);
+        fill(0);
+        const labels = [];
+        if (enabledComponents.reservoir) labels.push('Reservoir');
+        if (enabledComponents.pipe1) labels.push('Pipe 1');
+        if (enabledComponents.valve) labels.push('Valve');
+        if (enabledComponents.pipe2) labels.push('Pipe 2');
+        if (enabledComponents.pump) labels.push('Pump');
+        if (enabledComponents.pipe3) labels.push('Pipe 3');
+        if (enabledComponents.turbine) labels.push('Turbine');
+        if (enabledComponents.pipe4) labels.push('Pipe 4');
+        if (enabledComponents.outlet) labels.push('Outlet');
+
+        for (let i = 0; i < componentPoints.length; i++) {
+          const cp = componentPoints[i];
+          if (cp.x >= xMin && cp.x <= xMax) {
+            const xPos = xOffset + (cp.x - xMin) * xScale;
+            text(labels[i], xPos, yOffset - 30);
+
+            const hglY = yOffset - (cp.HGL - yMin) * yScale;
+            const eglY = yOffset - (cp.EGL - yMin) * yScale;
+            const lossY = yOffset - ((cp.HGL - cp.headLoss) - yMin) * yScale;
+            const residualY = yOffset - (cp.residualHead - yMin) * yScale;
+
+            const values = [
+              { label: `HGL: ${cp.HGL.toFixed(1)}`, y: hglY, color: [0, 0, 255] },
+              { label: `EGL: ${cp.EGL.toFixed(1)}`, y: eglY, color: [255, 0, 0] },
+              { label: `Loss: ${cp.headLoss.toFixed(1)}`, y: lossY, color: [0, 128, 0] },
+              { label: `Res: ${cp.residualHead.toFixed(1)}`, y: residualY, color: [128, 0, 128] }
+            ];
+            values.sort((a, b) => b.y - a.y);
+
+            let offset = -30;
+            for (let val of values) {
+              fill(...val.color);
+              text(val.label, xPos, val.y + offset);
+              offset -= 15;
+            }
+          }
+        }
+
+        textAlign(LEFT);
+        stroke(0, 0, 255);
+        line(xOffset + 10, 20, xOffset + 30, 20);
+        text('HGL', xOffset + 35, 25);
+        stroke(255, 0, 0);
+        line(xOffset + 10, 40, xOffset + 30, 40);
+        text('EGL', xOffset + 35, 45);
+        stroke(0, 128, 0);
+        line(xOffset + 10, 60, xOffset + 30, 60);
+        text('Head Loss', xOffset + 35, 65);
+        stroke(128, 0, 128);
+        line(xOffset + 10, 80, xOffset + 30, 80);
+        text('Residual Head', xOffset + 35, 85);
+      }
+
+      let canvasContainer = document.createElement('div');
+      canvasContainer.id = 'canvas-container';
+      document.querySelector('.container').insertBefore(canvasContainer, document.querySelector('.reset-button-container'));
+    } else if (window.p5Instance) {
+      console.warn('p5.js already initialized. Skipping duplicate initialization.');
+    } else {
+      console.error('p5.js not properly loaded. Please ensure the p5.js library is included only once.');
+    }
+  </script>
 </body>
 </html>
